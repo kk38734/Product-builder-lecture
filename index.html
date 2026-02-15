@@ -561,28 +561,50 @@
         const topResult = document.getElementById("topResult");
         const resultList = document.getElementById("resultList");
 
+        function toKoreanLabel(label) {
+            const normalized = String(label || "").toLowerCase();
+            if (normalized === "dog") return "강아지상";
+            if (normalized === "cat") return "고양이상";
+            return label;
+        }
+
         async function ensureModel() {
             if (model) return model;
             statusText.textContent = "AI 모델을 불러오는 중...";
             model = await tmImage.load(MODEL_BASE_URL + "model.json", MODEL_BASE_URL + "metadata.json");
-            statusText.textContent = "사진을 선택하면 결과를 분석합니다.";
+            statusText.textContent = "모델 준비 완료! 사진을 선택하면 결과를 분석합니다.";
             return model;
         }
 
         function renderPredictions(predictions) {
             const sorted = [...predictions].sort((a, b) => b.probability - a.probability);
             const best = sorted[0];
-            topResult.textContent = `당신은 "${best.className}" 느낌! (${(best.probability * 100).toFixed(1)}%)`;
+            const bestLabel = toKoreanLabel(best.className);
+            topResult.textContent = `당신은 "${bestLabel}" 느낌! (${(best.probability * 100).toFixed(1)}%)`;
             resultList.innerHTML = sorted.map((item) => {
                 const score = (item.probability * 100).toFixed(1);
+                const label = toKoreanLabel(item.className);
                 return `
                     <div class="result-item">
-                        <span>${item.className}</span>
+                        <span>${label}</span>
                         <div class="result-bar"><div class="result-fill" style="width:${score}%"></div></div>
                         <strong>${score}%</strong>
                     </div>
                 `;
             }).join("");
+        }
+
+        async function initializeAiTest() {
+            try {
+                if (!window.tf || !window.tmImage) {
+                    throw new Error("AI 라이브러리를 불러오지 못했습니다.");
+                }
+                await ensureModel();
+            } catch (error) {
+                topResult.textContent = "이 환경에서는 AI 분석이 동작하지 않습니다.";
+                statusText.textContent = "Chrome/Edge 최신 버전에서 다시 시도해주세요.";
+                console.error(error);
+            }
         }
 
         imageInput.addEventListener("change", async function (event) {
@@ -614,6 +636,8 @@
                 console.error(error);
             }
         });
+
+        initializeAiTest();
     </script>
 </body>
 </html>
